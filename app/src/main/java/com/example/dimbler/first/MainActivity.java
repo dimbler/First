@@ -6,9 +6,11 @@ import java.util.Arrays;
 import java.util.Calendar;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
@@ -58,8 +60,12 @@ public class MainActivity extends AppCompatActivity implements
 
     AlarmSetup SetupFragment;
 
+    BroadcastReceiver br;
+    public final static String BROADCAST_ACTION = "com.example.dimbler.first.alarmjob";
+    public final static String ALARM = "getAlarm";
+
     // Handler for incoming messages from the service.
-    private IncomingMessageHandler mHandler;
+    //private IncomingMessageHandler mHandler;
     public static final String MESSENGER_INTENT_KEY
             = BuildConfig.APPLICATION_ID + ".MESSENGER_INTENT_KEY";
     public static final int MSG_ALARM = 1;
@@ -89,14 +95,14 @@ public class MainActivity extends AppCompatActivity implements
             cancelAllJobs();
         }
     }
-
+/*
     private static class IncomingMessageHandler extends Handler {
 
         // Prevent possible leaks with a weak reference.
         private WeakReference<MainActivity> mActivity;
 
         IncomingMessageHandler(MainActivity activity) {
-            super(/* default looper */);
+            super();
             this.mActivity = new WeakReference<>(activity);
         }
 
@@ -109,11 +115,11 @@ public class MainActivity extends AppCompatActivity implements
             }
             Message m;
             switch (msg.what) {
-                /*
-                 * Receives callback from the service when a job has landed
-                 * on the app. Turns on indicator and sends a message to turn it off after
-                 * a second.
-                 */
+
+                 // Receives callback from the service when a job has landed
+                 // on the app. Turns on indicator and sends a message to turn it off after
+                 // a second.
+
                 case MSG_ALARM:
 
                     Fragment ShowFragment = new alarm_show();
@@ -128,15 +134,33 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
     }
-
+*/
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // создаем BroadcastReceiver
+        br = new BroadcastReceiver() {
+            // действия при получении сообщений
+            public void onReceive(Context context, Intent intent) {
+                boolean alarm = intent.getBooleanExtra(ALARM, false);
+                Fragment ShowFragment = new alarm_show();
+                FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+                ft.replace(R.id.FrameFragment, ShowFragment);
+                ft.addToBackStack(null);
+                ft.commitAllowingStateLoss();
+                Log.d(TAG, "Message Handle");
+            }
+        };
+        // создаем фильтр для BroadcastReceiver
+        IntentFilter intFilt = new IntentFilter(BROADCAST_ACTION);
+        // регистрируем (включаем) BroadcastReceiver
+        registerReceiver(br, intFilt);
+
         //Подключаемся к сервису для обмена сообщениями
         mServiceComponent = new ComponentName(this, AlarmJobService.class);
-        mHandler = new IncomingMessageHandler(this);
+        //mHandler = new IncomingMessageHandler(this);
 
         //Создаем установщик часов с обработчиком
         mTimePicker = (TimePicker) findViewById(R.id.mTimePicker);
@@ -186,11 +210,13 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onStart() {
         super.onStart();
+        /*
         // Start service and provide it a way to communicate with this class.
         Intent startServiceIntent = new Intent(this, AlarmJobService.class);
         Messenger messengerIncoming = new Messenger(mHandler);
         startServiceIntent.putExtra(MESSENGER_INTENT_KEY, messengerIncoming);
         startService(startServiceIntent);
+        */
     }
 
     @Override

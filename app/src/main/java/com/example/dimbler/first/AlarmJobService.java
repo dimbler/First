@@ -24,7 +24,7 @@ import static com.example.dimbler.first.MainActivity.MSG_ALARM;
 public class AlarmJobService extends JobService {
 
     private static final String TAG = AlarmJobService.class.getSimpleName();
-    private Messenger mActivityMessenger;
+    //private Messenger mActivityMessenger;
 
     @Override
     public void onCreate() {
@@ -44,10 +44,10 @@ public class AlarmJobService extends JobService {
      */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        mActivityMessenger = intent.getParcelableExtra(MESSENGER_INTENT_KEY);
+        //mActivityMessenger = intent.getParcelableExtra(MESSENGER_INTENT_KEY);
         return START_NOT_STICKY;
     }
-
+/*
     private void sendMessage(int messageID, @Nullable Object params) {
         // If this service is launched by the JobScheduler, there's no callback Messenger. It
         // only exists when the MainActivity calls startService() with the callback in the Intent.
@@ -64,7 +64,7 @@ public class AlarmJobService extends JobService {
             Log.e(TAG, "Error passing service object back to activity.");
         }
     }
-
+*/
     @Override
     public boolean onStartJob(final JobParameters params) {
         // The work that this service "does" is simply wait for a certain duration and finish
@@ -77,7 +77,10 @@ public class AlarmJobService extends JobService {
             intent.putExtra("Alarm", true);
             startActivity(intent);
         }else {
-            sendMessage(MSG_ALARM, params.getJobId());
+            Intent intent = new Intent(MainActivity.BROADCAST_ACTION);
+            intent.putExtra(MainActivity.ALARM, true);
+            sendBroadcast(intent);
+            //sendMessage(MSG_ALARM, params.getJobId());
         }
         Toast.makeText(getApplicationContext(),"WAKEUP", Toast.LENGTH_LONG).show();
         // Return true as there's more work to be done with this job.
