@@ -69,17 +69,17 @@ public class AlarmJobService extends JobService {
     public boolean onStartJob(final JobParameters params) {
         // The work that this service "does" is simply wait for a certain duration and finish
         // the job (on another thread).
-        Log.i(TAG, "on start job: " + params.getJobId());
-        sendMessage(MSG_ALARM, params.getJobId());
-
-        Toast.makeText(getApplicationContext(),"WAKEUP", Toast.LENGTH_LONG).show();
+        Log.d(TAG, "on start job: " + params.getJobId());
 
         if (MainActivity.isActive == false) {
             Intent intent = new Intent(this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra("Alarm", true);
             startActivity(intent);
+        }else {
+            sendMessage(MSG_ALARM, params.getJobId());
         }
-        //startActivity(new Intent(this, MainActivity.class));
+        Toast.makeText(getApplicationContext(),"WAKEUP", Toast.LENGTH_LONG).show();
         // Return true as there's more work to be done with this job.
         return true;
     }
@@ -87,7 +87,7 @@ public class AlarmJobService extends JobService {
     @Override
     public boolean onStopJob(JobParameters params) {
         // Stop tracking these job parameters, as we've 'finished' executing.
-        Log.i(TAG, "on stop job: " + params.getJobId());
+        Log.d(TAG, "on stop job: " + params.getJobId());
 
         // Return false to drop the job.
         return false;

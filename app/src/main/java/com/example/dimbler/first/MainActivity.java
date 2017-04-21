@@ -54,7 +54,6 @@ public class MainActivity extends AppCompatActivity implements
     public static final String PREFS_NAME = "FirstAttempt";
     public static boolean StartChecked = false;
 
-
     public static boolean isActive = false;
 
     AlarmSetup SetupFragment;
@@ -67,6 +66,14 @@ public class MainActivity extends AppCompatActivity implements
     private String StartDays = "";
 
     public void ShowInteraction(){
+        //Готовим данные для установки фрагмента
+        StartChecked = false;
+
+        Bundle bundle=new Bundle();
+        bundle.putBoolean("isSheduled", StartChecked);
+        bundle.putString("StartDays", StartDays);
+        SetupFragment = new AlarmSetup();
+        SetupFragment.setArguments(bundle);
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
         ft.replace(R.id.FrameFragment, SetupFragment);
         ft.commit();
@@ -74,10 +81,9 @@ public class MainActivity extends AppCompatActivity implements
 
     // Now we can define the action to take in the activity when the fragment event fires
     public void onFragmentInteraction(Boolean StartCh, String Start) {
-        StartChecked = StartCh;
         StartDays = Start;
         Log.d(TAG, Start);
-        if (StartChecked ){
+        if (StartCh ){
             scheduleJob();
         }else{
             cancelAllJobs();
@@ -109,12 +115,13 @@ public class MainActivity extends AppCompatActivity implements
                  * a second.
                  */
                 case MSG_ALARM:
+
                     Fragment ShowFragment = new alarm_show();
-                    FragmentActivity activity = (FragmentActivity)mActivity.get();
+                    FragmentActivity activity = mActivity.get();
                     FragmentTransaction ft = activity.getSupportFragmentManager().beginTransaction();
                     ft.replace(R.id.FrameFragment, ShowFragment);
-                    //ft.addToBackStack(null);
-                    ft.commit();
+                    ft.addToBackStack(null);
+                    ft.commitAllowingStateLoss();
                     Log.d(TAG, "Message Handle");
                     Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
                     break;
@@ -126,12 +133,14 @@ public class MainActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        //Подключаемся к сервису для обмена сообщениями
         mServiceComponent = new ComponentName(this, AlarmJobService.class);
+        mHandler = new IncomingMessageHandler(this);
+
+        //Создаем установщик часов с обработчиком
         mTimePicker = (TimePicker) findViewById(R.id.mTimePicker);
         mTimePicker.setIs24HourView(true);
-
-
-
 
         mTimePicker.setOnTimeChangedListener(new TimePicker.OnTimeChangedListener() {
             public void onTimeChanged(TimePicker view, int hourOfDay, int minute) {
@@ -145,27 +154,33 @@ public class MainActivity extends AppCompatActivity implements
             }
         });
 
+
         isActive = true;
 
-        mHandler = new IncomingMessageHandler(this);
-
+        //Получаем данные конфигурации
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         StartChecked = settings.getBoolean("isSheduled", false);
         StartDays = settings.getString("StartDays", "");
+
+        //Готовим данные для установки фрагмента
         Bundle bundle=new Bundle();
         bundle.putBoolean("isSheduled", StartChecked);
         bundle.putString("StartDays", StartDays);
-                //set Fragmentclass Arguments());
 
-        //Add fragment
-        SetupFragment = new AlarmSetup();
-        SetupFragment.setArguments(bundle);
+        Bundle startAlarm = getIntent().getExtras();
+        //boolean isAlarm = startAlarm.getBoolean("Alarm");
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-
-        ft.add(R.id.FrameFragment, SetupFragment);
+        if (startAlarm != null) {
+            Fragment AlarmFragment = new alarm_show();
+            ft.add(R.id.FrameFragment, AlarmFragment);
+        }else{
+            //Добавляем фрагмент установки будильника
+            SetupFragment = new AlarmSetup();
+            SetupFragment.setArguments(bundle);
+            ft.add(R.id.FrameFragment, SetupFragment);
+        }
         ft.addToBackStack(null);
         ft.commit();
-
     }
 
     @Override
@@ -181,7 +196,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onResume() {
         super.onResume();  // Always call the superclass method first
-
+        Log.d(TAG, "Resume");
     }
 
         @Override
@@ -191,28 +206,33 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void scheduleJob() {
+        //Если нет записи о созданной задаче - согдаем новую задачу
+        if (StartChecked == false) {
 
-        // We need an Editor object to make preference changes.
-        // All objects are from android.context.Context
-        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.putBoolean("isSheduled", StartChecked);
-        editor.putString("StartDays", StartDays);
-        // Commit the edits!
-        editor.commit();
+            //Устанавливаем включение при запуске
+            StartChecked = true;
 
-        if (StartChecked == true) {
+            // Записываем параметры устанавливаемой задачи
+            SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+            SharedPreferences.Editor editor = settings.edit();
+            editor.putBoolean("isSheduled", StartChecked);
+            editor.putString("StartDays", StartDays);
+            // Commit the edits!
+            editor.commit();
 
+            //Высчитываем данные до ближайшего запуска
             Calendar now = Calendar.getInstance();
 
             Calendar schedule = Calendar.getInstance();
             schedule.set(schedule.get(Calendar.YEAR), schedule.get(Calendar.MONTH), schedule.get(Calendar.DAY_OF_MONTH), mTimePicker.getCurrentHour(), mTimePicker.getCurrentMinute(), 0);
             Log.d(TAG, "Schedule day " + String.format("%1$tA %1$tb %1$td %1$tY at %1$tI:%1$tM %1$Tp", schedule));
 
+            //Делаем поправку если дата уже в завтрашнем дне
             if (now.compareTo(schedule) > 0){
                 schedule.add(Calendar.DATE, 1);
             }
 
+            //Синхронизируемся по дням недели
             for (int i=0; i < 7; i++){
                 Calendar testCal = (Calendar)schedule.clone();
                 testCal.add(Calendar.DATE, i);
@@ -234,7 +254,6 @@ public class MainActivity extends AppCompatActivity implements
                     case 1:
                         if (Arrays.asList(separated).contains("Sun")) { schedule = testCal; i = 9; break; }
                 }
-
             }
 
             Log.d(TAG, "Schedule day " + String.format("%1$tA %1$tb %1$td %1$tY at %1$tI:%1$tM %1$Tp", schedule));
@@ -251,6 +270,7 @@ public class MainActivity extends AppCompatActivity implements
             }
             long timeGap = pickerTime - cTime;
 
+            //Устанавливаем задачу будильника
             JobInfo jobInfo = new JobInfo.Builder(JOB_ID, mServiceComponent)
                     .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
                     .setRequiresDeviceIdle(false)
@@ -287,6 +307,16 @@ public class MainActivity extends AppCompatActivity implements
      * Executed when user clicks on CANCEL ALL.
      */
     public void cancelAllJobs() {
+        StartChecked = false;
+        // Записываем параметры устанавливаемой задачи
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+        editor.putBoolean("isSheduled", StartChecked);
+        editor.putString("StartDays", StartDays);
+        // Commit the edits!
+        editor.commit();
+
+        //Отменяем все задания
         JobScheduler tm = (JobScheduler) this.getSystemService(Context.JOB_SCHEDULER_SERVICE);
         tm.cancelAll();
         Toast.makeText(this, R.string.all_jobs_cancelled, Toast.LENGTH_SHORT).show();

@@ -101,12 +101,11 @@ public class AlarmSetup extends Fragment{
                 if (ToggleFriday.isChecked()) { StartDays += ":Fri"; }
                 if (ToggleSaturday.isChecked()) { StartDays += ":Sat"; }
                 if (ToggleSunday.isChecked()) { StartDays += ":Sun"; }
-                if (mListener != null) {
-                    mListener.onFragmentInteraction(StartChecked, StartDays);
-                }
-
             }else{
                 StartChecked = false;
+            }
+            if (mListener != null) {
+                mListener.onFragmentInteraction(StartChecked, StartDays);
             }
         }
     };
@@ -118,13 +117,6 @@ public class AlarmSetup extends Fragment{
         // Inflate the layout for this fragment
 
         View view = inflater.inflate(R.layout.fragment_alarm_setup, container, false);
-
-        //StartChecked
-        ToggleButton start_stop_Button = (ToggleButton) view.findViewById(R.id.start_stop_button);
-        start_stop_Button.setOnCheckedChangeListener(toggleButtonChangeListener);
-        if (StartChecked){
-//            start_stop_Button.setChecked(true);
-        }
 
         //StartDays
         ToggleMonday = (ToggleButton) view.findViewById(R.id.checkmonday);
@@ -163,6 +155,14 @@ public class AlarmSetup extends Fragment{
                 }
             }
         }
+
+        //StartChecked
+        ToggleButton start_stop_Button = (ToggleButton) view.findViewById(R.id.start_stop_button);
+
+        if (StartChecked){
+            start_stop_Button.setChecked(true);
+        }
+        start_stop_Button.setOnCheckedChangeListener(toggleButtonChangeListener);
         return  view;
     }
 
